@@ -1,9 +1,6 @@
 CodingChallenge
 ===============
 
-code challenges for interviews
+Code challenges for interviews. 
 
-
-- [Pirate Speak](https://github.com/NetworkContractSolutions/CodingChallenge/tree/master/CodingChallenge.PirateSpeak)
-
-- [Family Tree](https://github.com/NetworkContractSolutions/CodingChallenge/tree/master/CodingChallenge.FamilyTree)
+Please ONLY do the [ShoppingChallenge](https://github.com/NetworkContractSolutions/CodingChallenge/blob/master/ShoppingChallenge.cs)
