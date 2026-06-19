@@ -8,8 +8,8 @@ namespace CodingChallenge.Shopping
         static void Main(string[] args)
         {
             var program = new Program();
-            program.ChristmasShoppingAtTheGroceryStore(calculator);
-            program.BuyingFoodAtTheGroceryStore(calculator);
+            program.ChristmasShoppingAtTheGroceryStore();
+            program.BuyingFoodAtTheGroceryStore();
         }
         
         void ChristmasShoppingAtTheGroceryStore()
