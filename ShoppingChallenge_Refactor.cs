@@ -1,0 +1,293 @@
+using System;
+using System.Collections.Generic;
+
+namespace CodingChallenge.Shopping
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            ICheckoutCalculator calculator = new GroceryStoreCheckoutCalculator();
+            
+            var program = new Program();
+            program.ChristmasShoppingAtTheGroceryStore(calculator);
+            program.BuyingFoodAtTheGroceryStore(calculator);
+        }
+        
+        void ChristmasShoppingAtTheGroceryStore(ICheckoutCalculator calculator)
+        {
+            var carts = new List<CartItem>
+            {
+                new CartItem {ProductName = "Lights", Category = ProductCategory.Christmas, Price = 5.99m, Quantity = 10},
+                new CartItem {ProductName = "Tree", Category = ProductCategory.Christmas, Price = 169m, Quantity = 1},
+                new CartItem {ProductName = "Ornaments", Category = ProductCategory.Christmas, Price = 8m, Quantity = 15},
+            };
+            
+            var total = calculator.Calculate(carts, new DateTime(2020,11,30));
+            Console.WriteLine("Christmas shopping total: " + total);
+            
+            total = calculator.Calculate(carts, new DateTime(2020,12,30));
+            Console.WriteLine("Christmas shopping total after Christmas: " + total);
+        }
+        
+        void BuyingFoodAtTheGroceryStore(ICheckoutCalculator calculator)
+        {
+            var carts = new List<CartItem>
+            {
+                new CartItem {ProductName = "Apple", Category = ProductCategory.Food, Price = 3.27m, Weight = 0.79m},
+                new CartItem {ProductName = "Scallop", Category = ProductCategory.Food, Price = 18m, Weight = 1.5m},
+                new CartItem {ProductName = "Salad", Category = ProductCategory.Food, Price = 6.99m, Quantity = 1},
+                new CartItem {ProductName = "Ground Beef", Category = ProductCategory.Food, Price = 7.99m, Weight = 1.5m},
+                new CartItem {ProductName = "Red Wine", Category = ProductCategory.Food, Price = 25.99m, Quantity = 1},
+                new CartItem {ProductName = "Ornaments", Category = ProductCategory.Christmas, Price = 5m, Quantity = 10}
+            };
+            
+            var total = calculator.Calculate(carts, new DateTime(2020,11,30));
+            Console.WriteLine("Food cart total: " + total);
+            
+            total = calculator.Calculate(carts, new DateTime(2020,11,30, 7, 11, 0));
+            Console.WriteLine("Food cart total (senior hour): " + total);
+        }
+        
+    }
+
+
+    #region Shared
+
+    public enum ProductCategory
+    {
+        Unknown = 0,
+        Christmas = 1,
+        Food = 2
+    }
+
+    public class CartItem
+    {
+        public string ProductName { get; set; }
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+        public ProductCategory Category { get; set; }
+        
+        public decimal Weight { get; set; }
+    }
+
+    #endregion
+    
+
+    #region Pricing
+
+    /// <summary>
+    /// Pricing strategy interface for calculating base prices of items.
+    /// Supports different pricing models (quantity-based, weight-based, etc.).
+    /// Follows the Strategy Pattern to make discounts easily extensible.
+    /// </summary>
+    public interface IPricingStrategy
+    {
+        /// <summary>Determines if this pricing strategy applies to the given item.</summary>
+        bool Applies(CartItem item);
+
+        /// <summary>Calculates the base price using this strategy.</summary>
+        decimal CalculatePrice(CartItem item);
+    }
+
+    /// <summary>Quantity-based pricing strategy (default).</summary>
+    public class QuantityBasedPricing : IPricingStrategy
+    {
+        public bool Applies(CartItem item) => item.Weight == 0;
+
+        public decimal CalculatePrice(CartItem item) => item.Quantity * item.Price;
+    }
+
+    /// <summary>Weight-based pricing strategy for produce and meats.</summary>
+    public class WeightBasedPricing : IPricingStrategy
+    {
+        public bool Applies(CartItem item) => item.Weight > 0;
+
+        public decimal CalculatePrice(CartItem item) => item.Weight * item.Price;
+    }
+
+    #endregion
+
+
+    #region Discounts
+
+    /// <summary>
+    /// Discount strategy interface for applying different discount rules.
+    /// </summary>
+    public interface IDiscount
+    {
+        /// <summary>Determines if this discount applies to the given item and date.</summary>
+        bool CanApply(CartItem item, DateTime checkOutDate);
+
+        /// <summary>Applies the discount to the base price.</summary>
+        decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate);
+    }
+
+    /// <summary>
+    /// Christmas discount: 20% off before Dec 15, 60% off Dec 15-25, 90% off after Dec 25.
+    /// </summary>
+    public class ChristmasDiscount : IDiscount
+    {
+        public bool CanApply(CartItem item, DateTime checkOutDate)
+        {
+            return item.Category == ProductCategory.Christmas && checkOutDate.Month == 12;
+        }
+
+        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate)
+        {
+            decimal discountRate = checkOutDate.Day < 15 ? 0.20m
+                                 : checkOutDate.Day <= 25 ? 0.60m
+                                 : 0.90m;
+            return basePrice * (1 - discountRate);
+        }
+    }
+
+    /// <summary>
+    /// Senior hour discount: 10% off for food items purchased between 6:00 AM and 8:00 AM.
+    /// </summary>
+    public class SeniorHourDiscount : IDiscount
+    {
+        public bool CanApply(CartItem item, DateTime checkOutDate)
+        {
+            return item.Category == ProductCategory.Food 
+                && checkOutDate.TimeOfDay.Hours > 6 
+                && checkOutDate.TimeOfDay.Hours <= 8;
+        }
+
+        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate)
+        {
+            return basePrice * 0.9m;
+        }
+    }
+
+    
+    /// <summary>
+    /// Discount engine for applying multiple discount strategies in sequence.
+    /// </summary>
+    public interface IDiscountEngine
+    {
+        /// <summary>Applies all applicable discounts to the base price.</summary>
+        decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate);
+    }
+
+    /// <summary>Default implementation of discount engine using strategy pattern.</summary>
+    public class DiscountEngine : IDiscountEngine
+    {
+        private readonly List<IDiscount> _discounts;
+
+        public DiscountEngine(params IDiscount[] discounts)
+        {
+            _discounts = new List<IDiscount>(discounts);
+        }
+
+        public decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate)
+        {
+            decimal price = basePrice;
+
+            foreach (var discount in _discounts)
+            {
+                if (discount.CanApply(item, checkOutDate))
+                {
+                    price = discount.Apply(price, item, checkOutDate);
+                }
+            }
+
+            return price;
+        }
+    }
+
+    #endregion
+
+
+    #region Checkout
+
+    /// <summary>
+    /// Public interface for the checkout calculator to enable DI and testing.
+    /// </summary>
+    public interface ICheckoutCalculator
+    {
+        decimal Calculate(List<CartItem> carts, DateTime checkOutDate);
+    }
+
+    /// <summary>
+    /// Calculates checkout totals by composing pricing and discount strategies.
+    /// Uses the Strategy and Composition patterns for maximum extensibility.
+    /// </summary>
+    public class GroceryStoreCheckoutCalculator : ICheckoutCalculator
+    {
+        private readonly IPricingStrategy[] _pricingStrategies;
+        private readonly IDiscountEngine _discountEngine;
+
+        /// <summary>Creates calculator with default pricing strategies and discounts.</summary>
+        public GroceryStoreCheckoutCalculator() 
+        {
+            _pricingStrategies = new IPricingStrategy[] { new QuantityBasedPricing(), new WeightBasedPricing() };
+            _discountEngine = new DiscountEngine(new ChristmasDiscount(), new SeniorHourDiscount());
+        }
+
+        /// <summary>Creates calculator with custom pricing strategies and discount engine.</summary>
+        public GroceryStoreCheckoutCalculator(IPricingStrategy[] pricingStrategies, IDiscountEngine discountEngine)
+        {
+            _pricingStrategies = pricingStrategies;
+            _discountEngine = discountEngine ?? throw new ArgumentNullException(nameof(discountEngine));
+        }
+
+        /// <summary>Calculates the total price for a cart of items after applying pricing and discounts.</summary>
+        public decimal Calculate(List<CartItem> carts, DateTime checkOutDate)
+        {
+            if (carts == null) throw new ArgumentNullException(nameof(carts));
+
+            decimal itemTotal = 0m;
+
+            foreach (var item in carts)
+            {
+                ValidateItem(item);
+
+                decimal itemPrice = CalculateItemPrice(item, checkOutDate);
+                itemTotal += itemPrice;
+            }
+
+            return itemTotal;
+        }
+
+        /// <summary>Calculates the final price for a single item with pricing strategy and discounts.</summary>
+        private decimal CalculateItemPrice(CartItem item, DateTime checkOutDate)
+        {
+            decimal basePrice = CalculateBasePrice(item);
+            return _discountEngine.ApplyDiscounts(basePrice, item, checkOutDate);
+        }
+
+        /// <summary>Calculates the base price using the first applicable pricing strategy.</summary>
+        private decimal CalculateBasePrice(CartItem item)
+        {
+            foreach (var strategy in _pricingStrategies)
+            {
+                if (strategy.Applies(item))
+                {
+                    return strategy.CalculatePrice(item);
+                }
+            }
+
+            // Fallback: quantity-based pricing
+            return item.Quantity * item.Price;
+        }
+
+        private static void ValidateItem(CartItem item)
+        {
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            if (item.Category == ProductCategory.Unknown)
+                throw new ArgumentException("Item must have a valid product category.", nameof(item.Category));
+
+            if (item.Price < 0m)
+                throw new ArgumentOutOfRangeException(nameof(CartItem.Price), "Price cannot be negative.");
+
+            if (item.Weight < 0m)
+                throw new ArgumentOutOfRangeException(nameof(CartItem.Weight), "Weight cannot be negative.");
+
+            if (item.Quantity < 0)
+                throw new ArgumentOutOfRangeException(nameof(CartItem.Quantity), "Quantity cannot be negative.");
+        }
+    }
+    #endregion
+}
