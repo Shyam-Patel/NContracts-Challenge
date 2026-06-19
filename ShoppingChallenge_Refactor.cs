@@ -7,14 +7,12 @@ namespace CodingChallenge.Shopping
     {
         static void Main(string[] args)
         {
-            ICheckoutCalculator calculator = new GroceryStoreCheckoutCalculator();
-            
             var program = new Program();
             program.ChristmasShoppingAtTheGroceryStore(calculator);
             program.BuyingFoodAtTheGroceryStore(calculator);
         }
         
-        void ChristmasShoppingAtTheGroceryStore(ICheckoutCalculator calculator)
+        void ChristmasShoppingAtTheGroceryStore()
         {
             var customer = new Customer
             {
@@ -26,6 +24,8 @@ namespace CodingChallenge.Shopping
                 }
             };
 
+            ICheckoutCalculator calculator = new GroceryStoreCheckoutCalculator();
+
             var total = calculator.Calculate(customer, new DateTime(2020,11,30));
             Console.WriteLine("Christmas shopping total: " + total);
             
@@ -33,7 +33,7 @@ namespace CodingChallenge.Shopping
             Console.WriteLine("Christmas shopping total after Christmas: " + total);
         }
         
-        void BuyingFoodAtTheGroceryStore(ICheckoutCalculator calculator)
+        void BuyingFoodAtTheGroceryStore()
         {
             var customer = new Customer
             {
@@ -44,10 +44,11 @@ namespace CodingChallenge.Shopping
                     new CartItem {ProductName = "Salad", Category = ProductCategory.Food, Price = 6.99m, Quantity = 1},
                     new CartItem {ProductName = "Ground Beef", Category = ProductCategory.Food, Price = 7.99m, Weight = 1.5m},
                     new CartItem {ProductName = "Red Wine", Category = ProductCategory.Food, Price = 25.99m, Quantity = 1}
-                },
-                FirstResponder = true
+                }
             };
             
+            ICheckoutCalculator calculator = new GroceryStoreCheckoutCalculator();
+
             var total = calculator.Calculate(customer, new DateTime(2020,11,30));
             Console.WriteLine("Food cart total: " + total);
             
