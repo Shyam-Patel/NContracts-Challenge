@@ -16,36 +16,42 @@ namespace CodingChallenge.Shopping
         
         void ChristmasShoppingAtTheGroceryStore(ICheckoutCalculator calculator)
         {
-            var carts = new List<CartItem>
+            var customer = new Customer
             {
-                new CartItem {ProductName = "Lights", Category = ProductCategory.Christmas, Price = 5.99m, Quantity = 10},
-                new CartItem {ProductName = "Tree", Category = ProductCategory.Christmas, Price = 169m, Quantity = 1},
-                new CartItem {ProductName = "Ornaments", Category = ProductCategory.Christmas, Price = 8m, Quantity = 15},
+                Carts = new List<CartItem>
+                {
+                    new CartItem {ProductName = "Lights", Category = ProductCategory.Christmas, Price = 5.99m, Quantity = 10},
+                    new CartItem {ProductName = "Tree", Category = ProductCategory.Christmas, Price = 169m, Quantity = 1},
+                    new CartItem {ProductName = "Ornaments", Category = ProductCategory.Christmas, Price = 8m, Quantity = 15},
+                }
             };
-            
-            var total = calculator.Calculate(carts, new DateTime(2020,11,30));
+
+            var total = calculator.Calculate(customer, new DateTime(2020,11,30));
             Console.WriteLine("Christmas shopping total: " + total);
             
-            total = calculator.Calculate(carts, new DateTime(2020,12,30));
+            total = calculator.Calculate(customer, new DateTime(2020,12,30));
             Console.WriteLine("Christmas shopping total after Christmas: " + total);
         }
         
         void BuyingFoodAtTheGroceryStore(ICheckoutCalculator calculator)
         {
-            var carts = new List<CartItem>
+            var customer = new Customer
             {
-                new CartItem {ProductName = "Apple", Category = ProductCategory.Food, Price = 3.27m, Weight = 0.79m},
-                new CartItem {ProductName = "Scallop", Category = ProductCategory.Food, Price = 18m, Weight = 1.5m},
-                new CartItem {ProductName = "Salad", Category = ProductCategory.Food, Price = 6.99m, Quantity = 1},
-                new CartItem {ProductName = "Ground Beef", Category = ProductCategory.Food, Price = 7.99m, Weight = 1.5m},
-                new CartItem {ProductName = "Red Wine", Category = ProductCategory.Food, Price = 25.99m, Quantity = 1},
-                new CartItem {ProductName = "Ornaments", Category = ProductCategory.Christmas, Price = 5m, Quantity = 10}
+                Carts = new List<CartItem>
+                {
+                    new CartItem {ProductName = "Apple", Category = ProductCategory.Food, Price = 3.27m, Weight = 0.79m},
+                    new CartItem {ProductName = "Scallop", Category = ProductCategory.Food, Price = 18m, Weight = 1.5m},
+                    new CartItem {ProductName = "Salad", Category = ProductCategory.Food, Price = 6.99m, Quantity = 1},
+                    new CartItem {ProductName = "Ground Beef", Category = ProductCategory.Food, Price = 7.99m, Weight = 1.5m},
+                    new CartItem {ProductName = "Red Wine", Category = ProductCategory.Food, Price = 25.99m, Quantity = 1}
+                },
+                FirstResponder = true
             };
             
-            var total = calculator.Calculate(carts, new DateTime(2020,11,30));
+            var total = calculator.Calculate(customer, new DateTime(2020,11,30));
             Console.WriteLine("Food cart total: " + total);
             
-            total = calculator.Calculate(carts, new DateTime(2020,11,30, 7, 11, 0));
+            total = calculator.Calculate(customer, new DateTime(2020,11,30, 7, 11, 0));
             Console.WriteLine("Food cart total (senior hour): " + total);
         }
         
@@ -71,6 +77,14 @@ namespace CodingChallenge.Shopping
         public decimal Weight { get; set; }
     }
 
+    public class Customer
+    {
+        public bool FirstResponder { get; set; }
+        public bool MilitaryVeteran { get; set; }
+        public bool Employee { get; set; }
+        public List<CartItem> Carts { get; set; } = new List<CartItem>();
+    }
+
     #endregion
     
 
@@ -93,7 +107,7 @@ namespace CodingChallenge.Shopping
     /// <summary>Quantity-based pricing strategy (default).</summary>
     public class QuantityBasedPricing : IPricingStrategy
     {
-        public bool Applies(CartItem item) => item.Weight == 0;
+        public bool Applies(CartItem item) => item.Weight == 0 && item.Quantity > 0;
 
         public decimal CalculatePrice(CartItem item) => item.Quantity * item.Price;
     }
@@ -116,11 +130,11 @@ namespace CodingChallenge.Shopping
     /// </summary>
     public interface IDiscount
     {
-        /// <summary>Determines if this discount applies to the given item and date.</summary>
-        bool CanApply(CartItem item, DateTime checkOutDate);
+        /// <summary>Determines if this discount applies to the given item, date, and customer.</summary>
+        bool CanApply(CartItem item, DateTime checkOutDate, Customer customer);
 
         /// <summary>Applies the discount to the base price.</summary>
-        decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate);
+        decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer);
     }
 
     /// <summary>
@@ -128,12 +142,12 @@ namespace CodingChallenge.Shopping
     /// </summary>
     public class ChristmasDiscount : IDiscount
     {
-        public bool CanApply(CartItem item, DateTime checkOutDate)
+        public bool CanApply(CartItem item, DateTime checkOutDate, Customer customer)
         {
             return item.Category == ProductCategory.Christmas && checkOutDate.Month == 12;
         }
 
-        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate)
+        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer)
         {
             decimal discountRate = checkOutDate.Day < 15 ? 0.20m
                                  : checkOutDate.Day <= 25 ? 0.60m
@@ -147,14 +161,30 @@ namespace CodingChallenge.Shopping
     /// </summary>
     public class SeniorHourDiscount : IDiscount
     {
-        public bool CanApply(CartItem item, DateTime checkOutDate)
+        public bool CanApply(CartItem item, DateTime checkOutDate, Customer customer)
         {
             return item.Category == ProductCategory.Food 
                 && checkOutDate.TimeOfDay.Hours > 6 
                 && checkOutDate.TimeOfDay.Hours <= 8;
         }
 
-        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate)
+        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer)
+        {
+            return basePrice * 0.9m;
+        }
+    }
+
+    /// <summary>
+    /// First Responder customer discount: 10% off
+    /// </summary>
+    public class FirstResponderDiscount : IDiscount
+    {
+        public bool CanApply(CartItem item, DateTime checkOutDate, Customer customer)
+        {
+            return customer.FirstResponder == true;
+        }
+
+        public decimal Apply(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer)
         {
             return basePrice * 0.9m;
         }
@@ -167,7 +197,7 @@ namespace CodingChallenge.Shopping
     public interface IDiscountEngine
     {
         /// <summary>Applies all applicable discounts to the base price.</summary>
-        decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate);
+        decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer);
     }
 
     /// <summary>Default implementation of discount engine using strategy pattern.</summary>
@@ -180,15 +210,16 @@ namespace CodingChallenge.Shopping
             _discounts = new List<IDiscount>(discounts);
         }
 
-        public decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate)
+        public decimal ApplyDiscounts(decimal basePrice, CartItem item, DateTime checkOutDate, Customer customer)
         {
             decimal price = basePrice;
+            customer ??= new Customer();
 
             foreach (var discount in _discounts)
             {
-                if (discount.CanApply(item, checkOutDate))
+                if (discount.CanApply(item, checkOutDate, customer))
                 {
-                    price = discount.Apply(price, item, checkOutDate);
+                    price = discount.Apply(price, item, checkOutDate, customer);
                 }
             }
 
@@ -206,7 +237,7 @@ namespace CodingChallenge.Shopping
     /// </summary>
     public interface ICheckoutCalculator
     {
-        decimal Calculate(List<CartItem> carts, DateTime checkOutDate);
+        decimal Calculate(Customer customer, DateTime checkOutDate);
     }
 
     /// <summary>
@@ -222,7 +253,7 @@ namespace CodingChallenge.Shopping
         public GroceryStoreCheckoutCalculator() 
         {
             _pricingStrategies = new IPricingStrategy[] { new QuantityBasedPricing(), new WeightBasedPricing() };
-            _discountEngine = new DiscountEngine(new ChristmasDiscount(), new SeniorHourDiscount());
+            _discountEngine = new DiscountEngine(new ChristmasDiscount(), new SeniorHourDiscount(), new FirstResponderDiscount());
         }
 
         /// <summary>Creates calculator with custom pricing strategies and discount engine.</summary>
@@ -232,18 +263,19 @@ namespace CodingChallenge.Shopping
             _discountEngine = discountEngine ?? throw new ArgumentNullException(nameof(discountEngine));
         }
 
-        /// <summary>Calculates the total price for a cart of items after applying pricing and discounts.</summary>
-        public decimal Calculate(List<CartItem> carts, DateTime checkOutDate)
+        /// <summary>Calculates the total price for a customer's cart of items after applying pricing and discounts.</summary>
+        public decimal Calculate(Customer customer, DateTime checkOutDate)
         {
-            if (carts == null) throw new ArgumentNullException(nameof(carts));
+            if (customer == null) throw new ArgumentNullException(nameof(customer));
+            if (customer.Carts == null) throw new ArgumentNullException(nameof(customer.Carts));
 
             decimal itemTotal = 0m;
 
-            foreach (var item in carts)
+            foreach (var item in customer.Carts)
             {
                 ValidateItem(item);
 
-                decimal itemPrice = CalculateItemPrice(item, checkOutDate);
+                decimal itemPrice = CalculateItemPrice(item, checkOutDate, customer);
                 itemTotal += itemPrice;
             }
 
@@ -251,10 +283,10 @@ namespace CodingChallenge.Shopping
         }
 
         /// <summary>Calculates the final price for a single item with pricing strategy and discounts.</summary>
-        private decimal CalculateItemPrice(CartItem item, DateTime checkOutDate)
+        private decimal CalculateItemPrice(CartItem item, DateTime checkOutDate, Customer customer)
         {
             decimal basePrice = CalculateBasePrice(item);
-            return _discountEngine.ApplyDiscounts(basePrice, item, checkOutDate);
+            return _discountEngine.ApplyDiscounts(basePrice, item, checkOutDate, customer);
         }
 
         /// <summary>Calculates the base price using the first applicable pricing strategy.</summary>
@@ -287,6 +319,15 @@ namespace CodingChallenge.Shopping
 
             if (item.Quantity < 0)
                 throw new ArgumentOutOfRangeException(nameof(CartItem.Quantity), "Quantity cannot be negative.");
+
+            if (item.Weight > 0m && item.Quantity > 0)
+                throw new ArgumentException("Item cannot be both weighed and counted. Use either Weight or Quantity.", nameof(item));
+
+            if (item.Weight == 0m && item.Quantity == 0)
+                throw new ArgumentException("Item must have either a positive Quantity or a positive Weight.", nameof(item));
+
+            if (string.IsNullOrWhiteSpace(item.ProductName))
+                throw new ArgumentException("Item must have a product name.", nameof(item.ProductName));
         }
     }
     #endregion
