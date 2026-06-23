@@ -6,13 +6,13 @@ Context
 	
 Given the following example family
 
-				Ted
-				 /\
-				/  \
+					Ted
+					 /\
+					/  \
 			     Jim  Sally
 			     /      /\
 			    /      /  \
-		          Bob    Joe  George
+		     Bob    Joe  George
 
 Write a method that, given the person Ted and the string 'Joe' are passed in, will return Joe's birth month.
 Once that is complete, augment the method to handle Names that do not exist in the family tree.  Keep in mind that the tree supplied above is just an example.  Your solution should be able to solve for any person/tree and any string name.

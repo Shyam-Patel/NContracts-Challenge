@@ -6,7 +6,9 @@ namespace CodingChallenge.PirateSpeak
     {
         static void Main(string[] args)
         {
-            Console.WriteLine(new Solution().GetPossibleWords("boop", new [] {"oops","poo","boo","noop"}));
+            var test = new Solution().GetPossibleWords("ortsp", ["sport", "parrot", "ports", "matey"]);
+            Array.ForEach(test, Console.WriteLine);
+            Console.Read();
         }
     }
 }
